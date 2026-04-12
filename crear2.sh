@@ -1,12 +1,14 @@
 #!/bin/bash
 # =============================================================
-# crear2.sh - Crea un fichero con el nombre y tamaño indicados.
-# Si el fichero ya existe, prueba con nombre1, nombre2, ... nombre9.
-# Si también existe nombre9, no crea nada.
+# crear2_completo_final.sh
+# Crea un fichero con el nombre y tamaño indicados.
+# Si el fichero ya existe, prueba con nombre1, nombre2... hasta nombre9.
+# Si también existe nombre9, avisa y no crea nada.
 # =============================================================
 
 LOG_FILE="crear2.log"
 
+# ----------- FUNCIÓN DE LOG -----------
 log() {
     local nivel="$1"
     local mensaje="$2"
@@ -15,16 +17,18 @@ log() {
     echo "[$fecha] [$nivel] $mensaje" | tee -a "$LOG_FILE"
 }
 
+# ----------- FUNCIÓN DE AYUDA -----------
 mostrar_ayuda() {
     echo "Uso: $0 [nombre] [tamaño_KB]"
     echo "  $0 -h                Muestra esta ayuda"
     echo "  $0 nombre tamano     Crea el fichero con ese nombre y tamaño"
     echo "  $0 nombre            Crea el fichero con 1024 KB"
     echo "  $0                   Crea 'fichero_vacio' con 1024 KB"
-    echo "Si el fichero ya existe, probará con nombre1, nombre2... hasta nombre9"
+    echo "Si el fichero ya existe, prueba con nombre1...nombre9"
     exit 0
 }
 
+# ----------- FUNCIÓN PARA CREAR EL FICHERO -----------
 crear_fichero() {
     local nombre="$1"
     local tamanio="$2"
@@ -40,50 +44,29 @@ crear_fichero() {
     fi
 }
 
-buscar_nombre_libre() {
-    local base="$1"
-    local nombre_final="$base"
-
-    if [ ! -e "$base" ]; then
-        echo "$nombre_final"
-        return
-    fi
-
-    log "INFO" "El fichero '$base' ya existe"
-    echo "El fichero '$base' ya existe"
-
-    for i in 1 2 3 4 5 6 7 8 9
-    do
-        if [ ! -e "${base}$i" ]; then
-            nombre_final="${base}$i"
-            log "INFO" "Se usará el nombre '$nombre_final'"
-            echo "$nombre_final"
-            return
-        fi
-    done
-
-    log "ERROR" "Ya existen '$base' y todas sus versiones hasta '${base}9'"
-    echo "ERROR: Ya existen '$base' y todas sus versiones hasta '${base}9'"
-    exit 1
-}
+# =============================================================
+# BLOQUE PRINCIPAL
+# =============================================================
 
 log "INFO" "===== INICIO DEL SCRIPT ====="
 log "INFO" "Número de parámetros recibidos: $#"
 
+# Mostrar ayuda si se ejecuta con -h
 if [ "$1" = "-h" ]; then
     mostrar_ayuda
 fi
 
+# Tratamiento de parámetros
 if [ $# -eq 0 ]; then
-    NOMBRE="fichero_vacio"
+    BASE="fichero_vacio"
     TAMANIO=1024
     log "INFO" "Sin parámetros -> nombre='fichero_vacio', tamaño=1024 KB"
 elif [ $# -eq 1 ]; then
-    NOMBRE="$1"
+    BASE="$1"
     TAMANIO=1024
     log "INFO" "Solo nombre -> nombre='$1', tamaño=1024 KB"
 elif [ $# -eq 2 ]; then
-    NOMBRE="$1"
+    BASE="$1"
     TAMANIO="$2"
     log "INFO" "Nombre y tamaño -> nombre='$1', tamaño=$2 KB"
 
@@ -96,7 +79,35 @@ else
     exit 1
 fi
 
-NOMBRE_FINAL=$(buscar_nombre_libre "$NOMBRE")
+# BASE es el nombre original y no cambia nunca
+# NOMBRE_FINAL será el nombre que realmente se use
+NOMBRE_FINAL="$BASE"
+
+# Si ya existe el nombre base, buscar un nombre libre entre 1 y 9
+if [ -e "$BASE" ]; then
+    log "INFO" "El fichero '$BASE' ya existe"
+    echo "El fichero '$BASE' ya existe"
+
+    NOMBRE_FINAL=""
+
+    for i in 1 2 3 4 5 6 7 8 9
+    do
+        if [ ! -e "${BASE}$i" ]; then
+            NOMBRE_FINAL="${BASE}$i"
+            log "INFO" "Se usará el nombre '$NOMBRE_FINAL'"
+            break
+        fi
+    done
+
+    # Si sigue vacío, es que existen base, base1, ..., base9
+    if [ -z "$NOMBRE_FINAL" ]; then
+        log "ERROR" "Ya existen '$BASE' y todas sus versiones hasta '${BASE}9'"
+        echo "ERROR: Ya existen '$BASE' y todas sus versiones hasta '${BASE}9'"
+        exit 1
+    fi
+fi
+
+# Crear el fichero con el nombre final decidido
 crear_fichero "$NOMBRE_FINAL" "$TAMANIO"
 
 log "INFO" "===== FIN DEL SCRIPT ====="
